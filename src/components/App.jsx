@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader } from './Loader/Loader';
 import { Error } from './Error/Error';
 import { Greeting } from './Greeting/Greeting';
@@ -9,71 +9,71 @@ import api from './api/api';
 import { Wrapper } from './App.styled';
 import { GlobalStyle } from './GlobalStyle';
 
-export class App extends Component {
-  state = {
-    images: [],
-    query: '',
-    page: 1,
-    loading: false,
-    showBtn: false,
-    error: null,
-    isEmpty: false,
-  };
+export function App() {
+  const [images, setImages] = useState([]);
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [showBtn, setShowBtn] = useState(false);
+  const [error, setError] = useState(null);
+  const [isEmpty, setIsEmpty] = useState(false);
+  const [firstLoading, setFirstLoad] = useState(true);
 
-  componentDidUpdate(_, prevState) {
-    const { query, page } = this.state;
-    const perPage = 12;
+  const perPage = 12;
 
-    if (prevState.query !== query || prevState.page !== page) {
-      this.setState({ loading: true, showBtn: false });
-
-      api
-        .fetchImages(query, page, perPage)
-        .then(images => {
-          if (images.hits.length === 0) {
-            this.setState({ isEmpty: true, loading: false, showBtn: false });
-            return;
-          }
-
-          this.setState(prevState => ({
-            images: [...prevState.images, ...images.hits],
-            showBtn: page < Math.ceil(images.totalHits / 12),
-          }));
-        })
-        .catch(error => this.setState({ error }))
-        .finally(this.setState({ loading: false }));
+  useEffect(() => {
+    if (!query) {
+      return;
     }
-  }
 
-  handleSearch = query => {
-    this.setState({
-      query,
-      images: [],
-      page: 1,
-      isEmpty: false,
-    });
+    api
+      .fetchImages(query, page, perPage)
+      .then(images => {
+        if (images.hits.length === 0) {
+          setIsEmpty(true);
+          setLoading(false);
+          setShowBtn(false);
+          return;
+        }
+        setImages(prevImages => [...prevImages, ...images.hits]);
+        setShowBtn(page < Math.ceil(images.totalHits / 12));
+        setError(null);
+      })
+      .catch(error => setError(error))
+      .finally(() => {
+        setLoading(false);
+        setFirstLoad(false);
+      });
+  }, [page, query]);
+
+  useEffect(() => {
+    setLoading(true);
+    setShowBtn(false);
+  }, [page]);
+
+  const handleSearch = query => {
+    setQuery(query);
+    setImages([]);
+    setPage(1);
+    setIsEmpty(false);
   };
 
-  handleLoadMore = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
+  const handleLoadMore = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  render() {
-    const { query, showBtn, images, loading, error, isEmpty } = this.state;
-
-    return (
-      <Wrapper>
-        <Searchbar onSubmit={this.handleSearch} />
-        {!query && <Greeting />}
-        {images.length > 0 && <ImageGallery query={query} images={images} />}
-        {loading && <Loader />}
-        {showBtn && <Button onCLick={this.handleLoadMore} />}
-        {error && (
-          <Error message={'Sorry, something went wrong. Try again later!'} />
-        )}
-        {isEmpty && <Error message={`Sorry, but we can't find ${query}`} />}
-        <GlobalStyle />
-      </Wrapper>
-    );
-  }
+  return (
+    <Wrapper>
+      <Searchbar onSubmit={handleSearch} />
+      {!query && <Greeting />}
+      {images.length > 0 && <ImageGallery query={query} images={images} />}
+      {!firstLoading && loading && <Loader />}
+      {showBtn && <Button onClick={handleLoadMore} />}
+      {error && (
+        <Error message={'Sorry, something went wrong. Try again later!'} />
+      )}
+      {isEmpty && <Error message={`Sorry, but we can't find ${query}`} />}
+      <GlobalStyle />
+    </Wrapper>
+  );
 }
