@@ -46,11 +46,6 @@ export function App() {
       });
   }, [page, query]);
 
-  useEffect(() => {
-    setLoading(true);
-    setShowBtn(false);
-  }, [page]);
-
   const handleSearch = query => {
     setQuery(query);
     setImages([]);
